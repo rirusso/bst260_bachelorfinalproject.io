@@ -1,0 +1,266 @@
+---
+title: 'Is love really unpredictable? Using machine learning to identify winners of
+  The Bachelor '
+author: "Rienna Russo"
+date: "2022-12-14"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+subtitle: BST 260 Final Project
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+## Background
+The Bachelor is an American reality TV show in which an individual, cast as the bachelor, selects his potential wife from a pool of ~30 women contestants.$^1$ The show gained notoriety because of the elimination style format in which roses signify whether the lead wants to continue pursuing a relationship, and, thus, whether or not a contestant remains in the competition. Set over the course of a few months, the contestants vie for the lead's heart during one-on-one dates and group-dates taking place around the globe. Traditionally,  eliminations take place on dates or in rose ceremonies at the end of the week and the show culminates in a marriage proposal to the woman who receives 'the final rose.' In recent years, the show has been shifted away from the traditional format, including more unplanned eliminations, and fewer marriage proposals. With this increasing uncertainty, there is an opportunity to use data to quantify the probability of winning, and length of stay on the show. 
+
+These seasons garner anywhere from 5 to 15 million viewers.$^1$ There has been a rise in "Bachelor Fantasy Leagues," in which a group of people get together to create brackets that outline when contestants are eliminated and the winner of the show. Often, both bragging rights and money are at stake. Thus, predicting not only the winners of the reality TV show is of interest to viewers but also the length of time on the show.
+
+The goal of this analysis was to determine whether data from the first two weeks of the show could be used to predict the winner of the season and also the average length of stay on the show. Using data scraped from Wikipedia webpages for each Bachelor season, two classes of regression models were used to answer these questions. A pooled logistic regression model were used, with time included as indicator variables for each week of the show, to model the conditional probability of being eliminated given demographic characteristics and show factors, and a logistic regression without time was used to model the probability of winning the show  demographic characteristics and show factors. To determine the best predictor model,  Next, a linear regression model was used to model the average length on the show given demographic characteristics and show factors. 
+
+
+## Description of Data
+To date, there have been 26 seasons of The Bachelor and approximately 30 contestants per season. Previous researchers have explored using publicly available data on The Bachelor to create prediction models to identify winners of each season. However, this data lacked demographic characteristics and had a different format, making it difficult to merge the data from Wikipedia about contestants with the existing dataset. Moreover, the most recent 4 seasons were not included in this dataset. Therefore, a novel Bachelor dataset was created by web scraping Wikipedia pages using the `rvest` package in R. Data were formatted using R Packages `tidyverse` and `lubridate`.
+
+In this analysis, data from the seasons 15-25 were used as these were the seasons in which the rules of the show have been increasingly abandoned.$^{2-12}$ Season 26 was excluded from current analyses as there was no winner of the show. A total of 306 contestants were included in the dataset, with one winner from each season. 
+
+
+## Exploratory Data Analysis
+
+Results from the exploratory data analysis can be found in Table 1. Across seasons, the average age of contestants was 26 years old. Most contestants were from the South (35.0%) or the West (30.4%) in the US, while only 5% of contestants were from outside of the US. The most popular job sectors of contestants included business (25.8%), healthcare (10.8%), miscellaneous (10.5%), and arts & entertainment (9.8%). Those who won the Bachelor were more likely to be from the Western US, work in the Arts & Entertainment, Healthcare or Event Planning industries. The age of contestants was similar among winners and other contestants.
+
+### Table 1 Contestants demographic information 
+
+|         |   **Winners**    |   **Other Contestant**    |   **All** |
+|:----------|:----------|:-----------|:---------|
+| Age *(average in years)* |   26.1	 |   26.3 |   26.3 |
+| **Region**     |       |         |       |
+| Midwest     |  20.0%     |   17.9%      |   18.0%    |
+| Northeast   |  0.0%     |    12.2%    |   11.8%    |
+| South       |   30.0%    |    35.1%     |   4.9%    |
+| West        |   40.0%    |   30.1%      |   35.0%    |
+| Outside of US     |   10.0%    |  4.7%       |  30.4%     |
+| **Occupation**    |       |         |       |
+| Arts & Entertainment  |  30.0%   |  9.1%     |   9.8%    |
+| Business              |  0.0%   |  26.7%     |   25.8%    |   
+| Cosmetics and Fitness |  0.0%   | 7.4%      |   7.2%    |   
+| Dental                |  0.0%  | 2.4%      |    2.3%   |      
+| Event Planning        |  10.0%   | 3.0%      |  3.3%     |       
+| Fashion               |  0.0%   | 5.7%      |   5.6%    |      
+| Food                  |  0.0%   | 5.1%       |  4.9%     |      
+| Healthcare            |  30.0%   | 10.1%      | 10.8%      |       
+| Law                   |  0.0%  | 3.4%       |   3.3%    |   
+| Miscellaneous         |  0.0%   | 10.8%       |  10.5%     |       
+| News                  |  10.0%   | 5.1%      |   5.2%    |     
+| Real Estate           |  0.0%   | 5.1%      |    4.9%   |       
+| Teacher                |  10.0%   | 4.4%     |   4.6%    |       
+| Travel               |  10.0%   | 1.7%      |   2.0%    | 
+
+The age, occupation, and hometown region were similar across seasons. Figures 1-3 depict the distribution of these characteristics across seasons 
+
+
+### Figure 1: Age of contestants on seasons 15-25. 
+
+````{=tex}
+\begin{center}
+```{r figure_1, echo=FALSE, out.width = '60%'}
+knitr::include_graphics("Figure 1_Age.png")
+```
+\end{center}
+````
+    
+### Figure 2: Occupation of contestants on seasons 15-25. 
+````{=tex}
+\begin{center}
+```{r figure_2, echo=FALSE, out.width = '60%'}
+knitr::include_graphics("Figure 2_Occupation.png")
+```
+\end{center}
+````
+
+### Figure 3: Hometown region of contestants on seasons 15-25. 
+````{=tex}
+\begin{center}
+```{r figure_3, echo=FALSE, out.width = '60%'}
+knitr::include_graphics("Figure 3_Region.png")
+```
+\end{center}
+````
+
+# Results
+
+## Data Wrangling
+Data used in these analyses came from Wikipedia webpages for each Bachelor season. Characteristics of contestants were pulled first, including name, age, hometown, occupation, and the place in which they came in the competition. Data on contestants from each season's Wikipedia pages were merged into a large dataset containing  demographic information about contestants from all included seasons (`contestants_all`). A sample of this raw dataset is displayed in Table 2.
+
+
+### Table 2.  Sample of Merged Dataset Scraped from Bachelor Wikipedia Pages on Contestants
+
+| column_label | Name | Age | Hometown | Occupation | Outcome | Place | Ref | Arrive | 
+|:-------------------------------|:----------|:-----|:-------------|:----------|:---------|:------|:---|:----|
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15) |	Emily Maynard[7] |	24 |	Morgantown, West Virginia |	Children's Hospital Event Planner	| Winner | 	1	| [8]	| NA |
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)	| Chantal O'Brien[9] |	28	| Mercer Island, Washington |	Executive Assistant |	Runner-up |	2 |	[8]	| NA |
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)	| Ashley Hebert[10]	| 26 |	Madawaska, Maine |	Dental Student | 	Week 9 |	3	 | [11]	| NA |
+
+*Note: not all columns or rows included in the dataset are included in the above table*
+
+Another dataset was created from the elimination tables from each season's Wikipedia page (`elimination_all`). The elimination table on Wikipedia contained lists of the contestants remaining each week. A sample of this raw dataset is displayed in Table 3.
+
+### Table 3.  Sample of Merged Dataset Scraped from Bachelor Wikipedia Pages on Eliminations 
+
+| column_label	| Order	| Bachelorettes	|  Week...3 |	 Week...4 | Week...5	|  ... |  Week...12 |
+|:----------------|:-----|:---------|:-------|:-------|:-------|:-------|:-------|
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)	|Order	|Bachelorettes |	1 |	2 |	3	| …	| 10 |
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)	|1	    |Chantal	      |Ashley S.	| Ashley H. |	Ashley S.	| …	| Emily |
+https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)	|2	    |Kimberly	      |Michelle	| Michelle |	Shawntel	…	| Chantal |
+
+*Note: not all columns or rows included in the dataset are included in the above table*
+
+Additional data were scraped manually from th "Additional Information" section of the page on whether contestants received the first impression rose, and a one-on-one date within the first few weeks. The first impression rose is the first rose given out on the first night of the show. This rose symbolizes that the contestant made a lasting impression on the lead, and has been previously proposed to be a good indicator of how long a contestant will stay on the show. One-on-one dates are opportunities for contestants to have alone time with the lead, and may represent a lead's interest in the contestants. This data was merged to the `elimination_all` dataset.
+
+In the demographic dataset, contestants were referred to by their first and last name, as well as their nick name in quotes, when applicable, whereas  in the elimination dataset, contestants were referred to by their first name, nickname, or first name and last initial, when multiple contestants within a season had the same name. To merge these datasets, a new column was created in the demographic dataset that parsed and combined the first and last name initial, and replaced the first name with a nickname. Data cleaning was also needed for the occupation and hometown variables to then create new variables for occupations grouped into industrial sectors and hometowns into regions of the US. Industry sector and regions of the US were taken from Wikipedia.$^{13-14}$ Table 4 contains a sample of the cleaned and merged dataset used to predict the winner of the Bachelor and the length of stay on the show.
+
+### Table 4. Sample of Cleaned Dataset for Predicting the Winner of the Bachelor
+
+| Season | Name | Age | Winner | Contestant State | Occupation | Home State | First Impression Rose | First One on One |
+|:-----|:--------------------|:------|:------|:-----------------|:--------------|:----------|:--------------|:--------------|
+| 15     | Alli Travis | 24 | 0 | Ohio | Fashion | Midwest | 0 | 0 |
+| 15     | Ashley Hebert         | 26 | 0 | Maine | Healthcare | Northeast | 0 |  1 |
+| 15     | Ashley Spivey         | 26   | 0 |  North Carolina | Miscellaneous | South | 1 |  0 |
+| 15     | Britnee Marks         | 25  | 0 | Pennsylvania | Law | Northeast | 0 | 0 |
+| 15     | Britt Billmaier       | 25   |  0 | Washington | News | West | 0 |  0 |
+| 15     | Chantal O'Brien       | 28    | 0  | Washington | Business | West | 0 |  0 |
+| 15     | Cristy Caserta        | 30  | 0  | Florida | Law | South | 0 |  0 |
+| 15     | Emily Maynard         | 24   | 1 | West Virginia | Event Planning | South | 0 |  0 |
+| 15     | J Adams     | 26   | 0  | Washington | Business | West | 0 |  0 |
+| 15     | Jackie Gordon         | 26   | 0  | Rhode Island | Arts & Entertainment | Northeast | 0 | 0 |
+| 15     | Jill Ruskowski        |  28   | 0   | Texas | Business | South | 0 | 1 |      
+
+*Note: not all columns or rows included in the dataset are included in the above table*
+
+
+
+For the survival analysis, examining the hazard of elimination conditional upon relevant covariates, data were converted from the wide to a long format using the `tidyverse` package, `pivot_longer` function. In this dataset, each row corresponding to all of the time-points at which individuals were 'at risk' for elimination, as well as the week during which the individual was eliminated. Indicator variables were created for each week, from week 0 (beginning of first episode) to week 10 (end of last episode). All individuals were 'at risk' at week 0. As soon as an individual is eliminated, they stop contributing to the dataset. Table 5 contains a sample of the survival dataset used to calculate the discrete hazard of elimination.
+
+
+### Table 5. Sample of Cleaned Dataset for Survival Analysis
+
+| Season | Name              | Outcome | Week 0 | Week 1 |  Week 2 | Week 3 |  Week 4 | Week 5 |  Week 6 | Week 7 |  Week 8 | Week 9 |  Week 10 |
+|:-------|:---------------------|:---------|:---------|:---------|:---------|:---------|:---------|:---------|:---------|
+| 25 | Abigail Heringer  | 0 |W 0  | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 2 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 3 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 4 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 5 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 0 |W 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| 25 | Abigail Heringer  | 1 |W 7 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| 25 | Alana Milne       | 0 |W 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 25 | Alana Milne       | 1 |W 1 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+  
+## Regression Model Development and Selection
+
+Variables available within the first two weeks of the show were candidates for the prediction models, as usually the Bachelor Leagues require viewers to finalize their brackets by the end of the second week of the show. These included `age`, as a continuous variable, `region`, as four indicator variables for Northeast, Outside of US, South, and West, with a reference level of Midwest, `OneOnOne`, a binary variable representing whether a contestant received a one-on-one date within the first two weeks, and `FirstImpression`, a binary variable representing whether a contestant received the first impression rose.
+
+### Probability of Winning: Logistic Regression
+Three models were developed to examine the probability of winning The Bachelor. Model 1 contained only bachelor-specific variables `OneOnOne`, and `FirstImpression`, while Model 2 contained only demographic variables `Age`, `Region` and `Occupation`. Model 3 contained `Age`, `Region`, `OneOnOne`, and `FirstImpression`. `Occupation` was excluded due to overfitting concerns.  Accuracy and AIC were compared to determine the final model. Accuracy was comparable across models (~96%) while AIC was lowest for Model 3, thus Model 3 was selected as the final prediction model.
+
+$$ logit(\text{w}=1)=\beta_0+\beta_1Age + \beta_2Northeast + \beta_3South + \beta_4OutsideUS + \beta_5West + \beta_6OneOnOne+\beta_7FirstImpression $$ 
+
+Probabilities of winning the show were calculated using the coefficients from the final model. 
+
+\small
+$$P(w=1)=\frac{e^{5.77+Age*(-0.08)+Northeast*(-0.5)+OutsideUS*(-0.12)+South*(0.25)+West*(-0.34)+OneOnOne*(3.40)+FirstImpression*(3.45)}}{1+e^{5.77+Age*(-0.08)+Northeast*(-0.5)+OutsideUS*(-0.12)+South*(0.25)+West*(-0.34)+OneOnOne*(3.40)+FirstImpression*(3.45)}}$$ 
+
+The contestant with the highest probability of winning the show was Kaitlyn Bristowe, a 29 year old from Canada who worked in the Arts & Entertainment industry and went on a one-on-one date within the first two weeks. This individual did not win but was the runner-up for the season.
+
+### Risk of Elimination: Survival Analysis
+Three models were developed to examine the hazard of being eliminated. Time was modeled discretely, using 11 indicator variables corresponding to the beginning of the first episode `week.0` and the end of the last episode `week.final`. All models included `time` as 9 indicator variables. Model 1 contained only bachelor-specific variables `OneOnOne`, and `FirstImpression`, while Model 2 contained only demographic variables `Age`, `Region` and `Occupation`. Model 3 contained `Age`, `Region`, `Occupation`, `OneOnOne`, and `FirstImpression`. The inclusion of the interaction term allowed the hazard of being eliminated over time to vary based on whether an individual received the first impression rose. AIC was compared across models and used to select the final model. Model 3 was selected. 
+
+The hazard of being eliminated was 74.4% lower for individuals who went on a one-on-one date within the first two weeks, conditional upon other covariates, and 67.4% lower for individuals who received the first impression rose, conditional upon covariates. Both results were significant at p < 0.001 level. These results indicate that receiving one of the first one-on-one dates or receiving the first impression rose greatly decreases chances of being eliminated. These estimates are consistent with the plots demonstrating the hazard of elimination over time. Figure 1A depicts the hazard stratified by having a one-on-one and Figure 1B depicts the hazard stratified receiving the first impression rose. We can see that both of these factors similarly affect the elimination hazard, such that receiving either a one-on-one or the first impression rose is protective against elimination. 
+
+#### Figure 4: Discrete hazard of elimination, A) Comparing individuals  who had an early one-on-one date to those who did not, B) Comparing individuals who received the first impression rose to those who did not.  
+````{=tex}
+\begin{center}
+```{r figure_survival, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("Figure 2_Survival Plot.png")
+```
+\end{center}
+````
+
+
+### Length on the Show: Linear Regression 
+Three models were developed to examine the hazard of being eliminated. Time was modeled discretely, using 11 indicator variables corresponding to the beginning of the first episode `week.0` and the end of the last episode `week.final`. All models included `time` as 9 indicator variables. Model 1 contained only bachelor-specific variables `OneOnOne`, and `FirstImpression`, while Model 2 contained only demographic variables `Age`, `Region` and `Occupation`. Model 3 contained `Age`, `Region`, `OneOnOne`,  and  `FirstImpression`. Model 3 excluded `Occupation` as it did not improve model fit (as indicated by larger AIC). AIC and RMSE were compared across models and used to select the final model. Model 1 had the lowest AIC (1448) while Model 3 had the lowest RMSE (2.52). As the AIC for Model 3 was only slightly higher (1452), Model 3 was selected as the final model.
+
+$$ length.on.show=\beta_0 + \beta_1Age + \beta_2Northeast + \beta_3OutsideUS + \beta_4South + \beta_5West + \beta_6OneOnOne + \beta_7FirstImpression$$
+
+Figure 3 shows a plot comparing the length of stay predicted by Model 3 to the actual length of stay. Though this was the best model of those developed, from this plot it's clear that this model is unable to accurately predict the length of stay for those at the extremes, i.e., those who are eliminated the first night, or those who make it to the end of the show. 
+
+
+#### Figure 5: Observed vs. predicted length of time on the show.
+````{=tex}
+\begin{center}
+```{r figure_observed, echo=TRUE, out.width = '80%'}
+knitr::include_graphics("/Users/riennarusso/Documents/GitHub/bst260_bachelorfinalproject.io/Figure Scatterplot.png")
+```
+\end{center}
+````
+
+
+
+# Conclusion
+The goal of this analysis was to determine whether data available within the first few weeks of the show, could be used to predict the winner and length of time on the show. The main component of this analysis was creating a novel dataset with data on contestants and eliminations from data available online. Two datasets were successfully created for modelling the outcome of winning the show and length of time on the show, as well as the hazard of being eliminated. Based on three modelling strategies, characteristics of the ideal contestant include being from the Western US, getting one of the first one-on-one dates, and working in the Arts & Entertainment or Business industry. However, none of these models appeared to do very well in predicting the winner or the length of time on the show. These models may help guide viewers in creating Bachelor brackets but should be interpreted and used with caution.
+
+One reason for the limited predictive ability of these models may be due to the nature of the show. Former Bachelor leads have recently started disclosing the influential role of producers on their journey to find love on the show. Unfortunately data on the producers role is unmeasured, and thus presents an issue of omitted variable bias for which it is likely impossible to quantify using traditional methods. One option could be to explore a Bayesian approach in which a prior is introduced that influences the prediction based on whether there is thought to be a strong or minor influence of the producers.  
+
+Cross-validation to assess the performance of the model was considered but due to the limited number of people who won, this caused problems while running the logistic regression models. This analysis could be extended with additional web scraping for the earlier seasons. As mentioned previously, due to the changing in the format of the show, data from earlier seasons may not be as informative for later seasons. However, this is another question that could be investigated with additional data.
+
+Another variable that may have influence on the outcomes of interest is the type of date contestants have. Some researchers have proposed that contestants that go on scarier or high-stress dates often end up going further in the show; adrenaline-inducing activities have been found to promote bonding.$^{15}$ Previous dates on this show have included sky diving, bungee jumping and zero gravity flights. Anecdotally, contestants who go on these types of dates seem to often get to the final three. However, data on the types of dates was not readily available and would require either extensive web-scraping, or re-watching the show.
+
+
+
+# References
+1. The Bachelor (American TV series) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_TV_series)
+
+2. The Bachelor (American season 15) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_15)
+
+3. The Bachelor (American season 16) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_16)
+
+4. The Bachelor (American season 17) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_17)
+
+5. The Bachelor (American season 18) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_18)
+
+6. The Bachelor (American season 19) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_19)
+
+7. The Bachelor (American season 20) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_20)
+
+8. The Bachelor (American season 21) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_21)
+
+9. The Bachelor (American season 22) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_22)
+
+10. The Bachelor (American season 23) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_23)
+
+11. The Bachelor (American season 24) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_24)
+
+12. The Bachelor (American season 25) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_25)
+
+12. The Bachelor (American season 25) (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/The_Bachelor_(American_season_25)
+
+13. Economy of the United States by sector (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/Economy_of_the_United_States_by_sector
+
+14. List of regions of the United States (n.d.). In Wikipedia. Retrieved December 10, 2022, from https://en.wikipedia.org/wiki/List_of_regions_of_the_United_States
+
+15. Dutton, D. G., & Aron, A. P. (1974). Some evidence for heightened sexual attraction under conditions of high anxiety. Journal of Personality and Social Psychology, 30(4), 510-517. doi:10.1037/h0037031
+
+
+
+# Appendix 
+All figures/tables and code
+All figures/tables and code
